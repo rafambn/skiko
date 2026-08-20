@@ -464,6 +464,13 @@ if (supportAwt) {
     afterEvaluate {
         configureSymbolsFor(targetOs, targetArch)
 
+        if (targetOs == OS.MacOS) {
+            val runtimeTaskName = "skikoJvmRuntimeJar${joinToTitleCamelCase(targetOs.id, targetArch.id)}"
+            tasks.findByName(runtimeTaskName)?.let { runtimeTask ->
+                configurations.findByName("awtRuntimeElements")?.outgoing?.artifact(runtimeTask)
+            }
+        }
+
         if (targetOs == OS.MacOS && targetArch == Arch.Arm64) {
             configureSymbolsFor(OS.MacOS, Arch.X64)
         }

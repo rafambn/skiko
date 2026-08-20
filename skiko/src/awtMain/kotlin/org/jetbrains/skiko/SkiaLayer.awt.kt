@@ -96,6 +96,20 @@ actual open class SkiaLayer internal constructor(
         fillsWindow = fillsWindow
     )
 
+    /** Compatibility overload for Compose Desktop versions before `fillsWindow` was added. */
+    constructor(
+        accessibleContextProvider: ((Component) -> AccessibleContext)? = null,
+        properties: SkiaLayerProperties,
+        analytics: SkiaLayerAnalytics = SkiaLayerAnalytics.Empty,
+        pixelGeometry: PixelGeometry = PixelGeometry.UNKNOWN,
+    ) : this(
+        accessibleContextProvider = accessibleContextProvider,
+        properties = properties,
+        analytics = analytics,
+        pixelGeometry = pixelGeometry,
+        fillsWindow = false,
+    )
+
     val canvas: java.awt.Canvas
         get() = backedLayer
 

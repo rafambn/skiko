@@ -234,6 +234,16 @@ if (supportAwt && supportGraphiteJvm) {
         macosX64CoreLinkedLibrary?.let { files(it) },
         coreJvmRuntimeJar,
     )
+
+    if (targetOs == OS.MacOS) {
+        afterEvaluate {
+            val runtimeTaskName = "skikoJvmRuntimeJar${joinToTitleCamelCase(targetOs.id, targetArch.id)}"
+            tasks.findByName(runtimeTaskName)?.let { runtimeTask ->
+                configurations.findByName("awtRuntimeElements")?.outgoing?.artifact(runtimeTask)
+            }
+        }
+    }
+
     graphiteProjectContext.provideJvmRequiredSymbols(targetOs, targetArch)
     if (targetOs == OS.MacOS && targetArch == Arch.Arm64) {
         graphiteProjectContext.provideJvmRequiredSymbols(OS.MacOS, Arch.X64)
