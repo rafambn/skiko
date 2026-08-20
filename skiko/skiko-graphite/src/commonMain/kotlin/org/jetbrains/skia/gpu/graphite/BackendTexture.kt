@@ -34,6 +34,19 @@ class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _Fi
             check(ptr != NullPointer) { "Failed to create a Graphite Metal backend texture" }
             return BackendTexture(ptr)
         }
+
+        /**
+         * Creates a Graphite backend texture from an Emscripten WebGPU JS handle.
+         *
+         * The handle is released by the native bridge after it has been imported.
+         */
+        fun makeDawn(textureHandle: NativePointer): BackendTexture {
+            require(textureHandle != NullPointer) { "WebGPU texture handle is null" }
+            Stats.onNativeCall()
+            val ptr = _nMakeDawn(textureHandle)
+            check(ptr != NullPointer) { "Failed to create a Graphite Dawn backend texture" }
+            return BackendTexture(ptr)
+        }
     }
 
     private object _FinalizerHolder {
@@ -46,3 +59,6 @@ private external fun _nGetBackendTextureFinalizer(): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeMetal")
 private external fun _nMakeMetal(width: Int, height: Int, texturePtr: NativePointer): NativePointer
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeDawn")
+private external fun _nMakeDawn(textureHandle: NativePointer): NativePointer

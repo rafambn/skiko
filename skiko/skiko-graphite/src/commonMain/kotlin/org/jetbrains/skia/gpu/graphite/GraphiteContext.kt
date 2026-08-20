@@ -33,6 +33,19 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
             check(ptr != NullPointer) { "Failed to create a Graphite Metal context" }
             return GraphiteContext(ptr)
         }
+
+        /**
+         * Creates a Graphite context backed by the browser's WebGPU device.
+         *
+         * The WebGPU device must be installed in Skiko's Emscripten module before
+         * calling this method.
+         */
+        fun makeDawn(): GraphiteContext {
+            Stats.onNativeCall()
+            val ptr = _nMakeDawn()
+            check(ptr != NullPointer) { "Failed to create a Graphite Dawn context" }
+            return GraphiteContext(ptr)
+        }
     }
 
     /**
@@ -92,6 +105,9 @@ private external fun _nGetGraphiteContextFinalizer(): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeMetal")
 private external fun _nMakeMetal(devicePtr: NativePointer, queuePtr: NativePointer): NativePointer
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeDawn")
+private external fun _nMakeDawn(): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeRecorder")
 private external fun _nMakeRecorder(contextPtr: NativePointer): NativePointer

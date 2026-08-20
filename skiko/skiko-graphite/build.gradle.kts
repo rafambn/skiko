@@ -1,7 +1,8 @@
-@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
 
 import org.jetbrains.compose.internal.publishing.MavenCentralProperties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
@@ -21,6 +22,7 @@ plugins {
 // With the default properties below, Graphite has no enabled targets on Linux because its JVM target is macOS-only.
 extra["kotlin.internal.suppressGradlePluginErrors"] = "NoKotlinTargetsDeclared"
 apply(plugin = "org.jetbrains.kotlin.multiplatform")
+apply<SideWasmImportsGeneratorPlugin>()
 val kotlin = extensions.getByType<KotlinMultiplatformExtension>()
 
 val skiko = SkikoProperties(rootProject)
@@ -55,6 +57,13 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
             macos { frameworks("CoreFoundation", "Foundation", "Metal") }
             ios { frameworks("CoreFoundation", "Foundation", "Metal") }
             tvos { frameworks("CoreFoundation", "Foundation", "Metal") }
+        }
+        wasm {
+            staticSkiaLibs("skia_graphite_dawn_ext")
+            linkFlags(
+                "-s", "SIDE_MODULE=2",
+                "-s", "USE_WEBGPU=1",
+            )
         }
     }
 }
@@ -95,6 +104,23 @@ kotlin.run {
                     compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
                 }
             }
+        }
+    }
+
+    if (supportWeb) {
+        graphiteProjectContext.declareWasmTasks()
+
+        js {
+            outputModuleName.set("skiko-graphite-kjs")
+            browser()
+            binaries.executable()
+            setupImportsGeneratorPlugin(graphiteArtifacts.artifactIdPrefix, isSideModule = true)
+        }
+
+        wasmJs {
+            outputModuleName.set("skiko-graphite-kjs-wasm")
+            browser()
+            setupImportsGeneratorPlugin(graphiteArtifacts.artifactIdPrefix, isSideModule = true)
         }
     }
 
@@ -167,6 +193,16 @@ kotlin.run {
             languageSettings.optIn("kotlin.native.SymbolNameIsInternal")
         }
         configureIOSTestsWithMetal(project)
+    }
+}
+
+if (supportWeb) {
+    graphiteProjectContext.provideWasmSideModules()
+
+    // The import generator emits this prelude into skiko-graphite.mjs, but
+    // Kotlin's compilation task does not otherwise track web resources.
+    tasks.matching { it.name == "compileKotlinWasmJs" }.configureEach {
+        inputs.file(project.file("src/webMain/resources/pre-skiko-graphite.mjs"))
     }
 }
 

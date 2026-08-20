@@ -171,7 +171,8 @@ val coreDependencies: SkikoDependencyScope.() -> Unit = {
                 "-s", "MODULARIZE=1",
                 "-s", "EXPORT_ES6=1",
                 "-s", "EXPORT_NAME=loadSkikoWASM",
-                "-s", "EXPORTED_RUNTIME_METHODS=\"[GL, wasmExports, loadDynamicLibrary, LDSO, HEAPU8]\"",
+                "-s", "USE_WEBGPU=1",
+                "-s", "EXPORTED_RUNTIME_METHODS=\"[GL, WebGPU, JsValStore, wasmExports, loadDynamicLibrary, LDSO, HEAPU8]\"",
                 "--bind",
             )
         }
@@ -482,9 +483,11 @@ if (supportWeb) {
 
     val linkWasmSideModules = skikoProjectContext.wasmSideModulesFor("linkWasm").also {
         dependencies.add(it.name, project(":skiko-skottie"))
+        dependencies.add(it.name, project(":skiko-graphite"))
     }
     val linkWasmD8SideModules = skikoProjectContext.wasmSideModulesFor("linkWasmD8WithES6").also {
         dependencies.add(it.name, project(":skiko-skottie"))
+        dependencies.add(it.name, project(":skiko-graphite"))
     }
     skikoProjectContext.configureWasmMainModuleSideModuleInputs(
         linkWasmSideModules,

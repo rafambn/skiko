@@ -35,6 +35,9 @@ class RenderNodeContext internal constructor(ptr: NativePointer, managed: Boolea
         Stats.onNativeCall()
     }
 
+    /** Compatibility overload for Compose versions that predate snapshotCache. */
+    constructor(measureDrawBounds: Boolean) : this(measureDrawBounds, snapshotCache = true)
+
     fun setLightingInfo(
         centerX: Float = Float.MIN_VALUE,
         centerY: Float = Float.MIN_VALUE,

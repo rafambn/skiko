@@ -39,7 +39,11 @@ internal class ImportGeneratorExtension(
             reexportWriter.appendLine("import * as wasmApi from \"./$moduleName.mjs\";")
             if (moduleName == "skiko") {
                 reexportWriter.appendLine("window['GL'] = wasmApi.GL;")
-                reexportWriter.appendLine("export const api = { awaitSkiko: wasmApi.awaitSkiko }")
+                reexportWriter.appendLine(
+                    "export const api = { awaitSkiko: wasmApi.awaitSkiko, " +
+                        "setWebGPUDevice: wasmApi.setWebGPUDevice, " +
+                        "addWebGPUTexture: wasmApi.addWebGPUTexture }",
+                )
             }
             else {
                 reexportWriter.appendLine("export const isSideModuleLoaded = () => wasmApi.isSideModuleLoaded();")

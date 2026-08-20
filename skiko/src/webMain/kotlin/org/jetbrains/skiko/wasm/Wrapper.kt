@@ -98,5 +98,13 @@ internal expect fun createWebGLContext(canvas: HTMLCanvasElement, attr: ContextA
 
 internal expect fun onWasmReady(onReady: () -> Unit)
 
+/** Installs the browser WebGPU device used by Skia's Dawn Graphite backend. */
+@InternalSkikoApi
+expect fun setWebGPUDevice(device: JsAny)
+
+/** Stores a browser WebGPU object in Emscripten's JS handle table. */
+@InternalSkikoApi
+expect fun addWebGPUTexture(texture: JsAny): NativePointer
+
 @InternalSkikoApi
 expect val awaitSkiko: Promise<JsAny>

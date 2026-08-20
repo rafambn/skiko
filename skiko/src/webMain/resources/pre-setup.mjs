@@ -5,6 +5,7 @@ export const loadedWasm = {
 }
 
 let skikoGl = null;
+let skikoModule = null;
 const wasmReadyCallbacks = [];
 
 export const registerSkikoWasmReadyCallback = (callback) => {
@@ -36,6 +37,7 @@ export const loadSkikoExtension = (extensionPath) => {
 };
 
 const awaitSkikoCore = loadSkikoWASM().then((module) => {
+    skikoModule = module;
     const originalLocateFile = module.locateFile;
 
     module.locateFile = (path, prefix) => {
@@ -65,10 +67,22 @@ export const awaitSkiko = awaitSkikoCore.then(async (module) => {
     return module
 });
 
+export const setWebGPUDevice = (device) => {
+    if (!skikoModule) {
+        throw new Error("Skiko WebGPU runtime is not ready");
+    }
+    skikoModule.preinitializedWebGPUDevice = device;
+};
+
+export const addWebGPUTexture = (texture) => {
+    if (!skikoModule) {
+        throw new Error("Skiko WebGPU runtime is not ready");
+    }
+    return skikoModule.JsValStore.add(texture);
+};
+
 export const GL = new Proxy({}, {
     get(object, propName) {
         return skikoGl[propName];
     }
 })
-
-
