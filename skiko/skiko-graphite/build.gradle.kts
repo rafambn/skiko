@@ -19,7 +19,8 @@ plugins {
 }
 
 // skiko-graphite is included on Linux so CI can publish its common KMP module metadata.
-// With the default properties below, Graphite has no enabled targets on Linux because its JVM target is macOS-only.
+// With the default properties below, Graphite enables its JVM target on the host
+// platforms that have a native presentation backend in this fork.
 extra["kotlin.internal.suppressGradlePluginErrors"] = "NoKotlinTargetsDeclared"
 apply(plugin = "org.jetbrains.kotlin.multiplatform")
 apply<SideWasmImportsGeneratorPlugin>()
@@ -46,6 +47,7 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
             }
             linux {
                 staticSkiaLibs("skia_graphite_ext")
+                linkFlags("-l:libvulkan.so.1")
             }
             windows {
                 staticSkiaLibs("skia_graphite_dawn_ext", "dawn_combined")
@@ -235,7 +237,7 @@ if (supportAwt && supportGraphiteJvm) {
         coreJvmRuntimeJar,
     )
 
-    if (targetOs == OS.MacOS) {
+    if (targetOs == OS.MacOS || targetOs == OS.Linux) {
         afterEvaluate {
             val runtimeTaskName = "skikoJvmRuntimeJar${joinToTitleCamelCase(targetOs.id, targetArch.id)}"
             tasks.findByName(runtimeTaskName)?.let { runtimeTask ->

@@ -47,6 +47,37 @@ class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _Fi
             check(ptr != NullPointer) { "Failed to create a Graphite Dawn backend texture" }
             return BackendTexture(ptr)
         }
+
+        /**
+         * Creates a Graphite backend texture that wraps a Vulkan image.
+         *
+         * The numeric arguments use the Vulkan values from the application that owns the image.
+         */
+        fun makeVulkan(
+            width: Int,
+            height: Int,
+            format: Int,
+            imageUsage: Int,
+            imageLayout: Int,
+            queueFamilyIndex: Int,
+            imagePtr: NativePointer,
+        ): BackendTexture {
+            require(width > 0 && height > 0) { "Texture dimensions must be positive" }
+            require(queueFamilyIndex >= 0) { "Vulkan queue family index must not be negative" }
+            require(imagePtr != NullPointer) { "Vulkan image pointer is null" }
+            Stats.onNativeCall()
+            val ptr = _nMakeVulkan(
+                width,
+                height,
+                format,
+                imageUsage,
+                imageLayout,
+                queueFamilyIndex,
+                imagePtr,
+            )
+            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan backend texture" }
+            return BackendTexture(ptr)
+        }
     }
 
     private object _FinalizerHolder {
@@ -62,3 +93,14 @@ private external fun _nMakeMetal(width: Int, height: Int, texturePtr: NativePoin
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeDawn")
 private external fun _nMakeDawn(textureHandle: NativePointer): NativePointer
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeVulkan")
+private external fun _nMakeVulkan(
+    width: Int,
+    height: Int,
+    format: Int,
+    imageUsage: Int,
+    imageLayout: Int,
+    queueFamilyIndex: Int,
+    imagePtr: NativePointer,
+): NativePointer

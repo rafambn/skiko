@@ -46,6 +46,36 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
             check(ptr != NullPointer) { "Failed to create a Graphite Dawn context" }
             return GraphiteContext(ptr)
         }
+
+        /**
+         * Creates a Graphite context backed by a Vulkan device and queue.
+         *
+         * The Vulkan instance, physical device, logical device, and queue must remain valid for
+         * the lifetime of the returned context.
+         */
+        fun makeVulkan(
+            instancePtr: NativePointer,
+            physicalDevicePtr: NativePointer,
+            devicePtr: NativePointer,
+            queuePtr: NativePointer,
+            queueFamilyIndex: Int,
+        ): GraphiteContext {
+            require(instancePtr != NullPointer) { "Vulkan instance pointer is null" }
+            require(physicalDevicePtr != NullPointer) { "Vulkan physical device pointer is null" }
+            require(devicePtr != NullPointer) { "Vulkan device pointer is null" }
+            require(queuePtr != NullPointer) { "Vulkan queue pointer is null" }
+            require(queueFamilyIndex >= 0) { "Vulkan queue family index must not be negative" }
+            Stats.onNativeCall()
+            val ptr = _nMakeVulkan(
+                instancePtr,
+                physicalDevicePtr,
+                devicePtr,
+                queuePtr,
+                queueFamilyIndex,
+            )
+            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan context" }
+            return GraphiteContext(ptr)
+        }
     }
 
     /**
@@ -108,6 +138,15 @@ private external fun _nMakeMetal(devicePtr: NativePointer, queuePtr: NativePoint
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeDawn")
 private external fun _nMakeDawn(): NativePointer
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeVulkan")
+private external fun _nMakeVulkan(
+    instancePtr: NativePointer,
+    physicalDevicePtr: NativePointer,
+    devicePtr: NativePointer,
+    queuePtr: NativePointer,
+    queueFamilyIndex: Int,
+): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeRecorder")
 private external fun _nMakeRecorder(contextPtr: NativePointer): NativePointer

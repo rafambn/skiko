@@ -97,6 +97,9 @@ val coreDependencies: SkikoDependencyScope.() -> Unit = {
                     "skshaper",
                 )
                 dynamicSystemLibs("GL", "X11", "fontconfig")
+                // Linux distributions commonly ship the Vulkan loader as
+                // libvulkan.so.1 without the development symlink libvulkan.so.
+                linkFlags("-l:libvulkan.so.1")
                 arm64 { dynamicSystemLibs("EGL") }
             }
 
@@ -464,7 +467,7 @@ if (supportAwt) {
     afterEvaluate {
         configureSymbolsFor(targetOs, targetArch)
 
-        if (targetOs == OS.MacOS) {
+        if (targetOs == OS.MacOS || targetOs == OS.Linux) {
             val runtimeTaskName = "skikoJvmRuntimeJar${joinToTitleCamelCase(targetOs.id, targetArch.id)}"
             tasks.findByName(runtimeTaskName)?.let { runtimeTask ->
                 configurations.findByName("awtRuntimeElements")?.outgoing?.artifact(runtimeTask)
