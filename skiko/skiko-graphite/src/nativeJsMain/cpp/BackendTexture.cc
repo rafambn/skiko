@@ -50,6 +50,11 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_BackendTexture__1nMa
 }
 
 SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeVulkan(
-        KInt, KInt, KInt, KInt, KInt, KInt, KNativePointer) {
+        KInt,
+        KInt,
+        KInteropPointer,
+        KInt,
+        KInt,
+        KNativePointer) {
     return 0;
 }

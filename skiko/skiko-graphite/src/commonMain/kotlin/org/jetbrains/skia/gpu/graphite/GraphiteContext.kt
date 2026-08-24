@@ -1,9 +1,13 @@
 package org.jetbrains.skia.gpu.graphite
 
 import org.jetbrains.skia.ExternalSymbolName
+import org.jetbrains.skia.impl.InteropPointer
 import org.jetbrains.skia.impl.Managed
+import org.jetbrains.skia.impl.Native.Companion.NullPointer
 import org.jetbrains.skia.impl.NativePointer
+import org.jetbrains.skia.impl.NativePointerArray
 import org.jetbrains.skia.impl.Stats
+import org.jetbrains.skia.impl.interopScope
 import org.jetbrains.skia.impl.reachabilityBarrier
 import org.jetbrains.skiko.ExperimentalSkikoApi
 
@@ -48,10 +52,50 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
         }
 
         /**
-         * Creates a Graphite context backed by a Vulkan device and queue.
+         * Creates a Graphite context that submits work to a Vulkan queue.
          *
-         * The Vulkan instance, physical device, logical device, and queue must remain valid for
-         * the lifetime of the returned context.
+         * The Vulkan objects are owned by the caller and must outlive the returned context.
+         *
+         * @param instancePtr native pointer to the `VkInstance`.
+         * @param physicalDevicePtr native pointer to the `VkPhysicalDevice`.
+         * @param devicePtr native pointer to the `VkDevice`.
+         * @param queuePtr native pointer to the `VkQueue` the work is submitted to.
+         * @param graphicsQueueIndex index of the queue family [queuePtr] belongs to; it must
+         * support graphics operations.
+         * @param maxApiVersion highest Vulkan API version (`VK_MAKE_API_VERSION`) Skia may use.
+         * @return a Graphite context backed by Vulkan.
+         */
+        fun makeVulkan(
+            instancePtr: NativePointer,
+            physicalDevicePtr: NativePointer,
+            devicePtr: NativePointer,
+            queuePtr: NativePointer,
+            graphicsQueueIndex: Int,
+            maxApiVersion: Int,
+        ): GraphiteContext {
+            requireVulkanSupport()
+            require(instancePtr != NullPointer) { "Vulkan instance pointer is null" }
+            require(physicalDevicePtr != NullPointer) { "Vulkan physical device pointer is null" }
+            require(devicePtr != NullPointer) { "Vulkan device pointer is null" }
+            require(queuePtr != NullPointer) { "Vulkan queue pointer is null" }
+            Stats.onNativeCall()
+            val ptr = _nMakeVulkan(
+                instancePtr,
+                physicalDevicePtr,
+                devicePtr,
+                queuePtr,
+                graphicsQueueIndex,
+                maxApiVersion,
+            )
+            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan context" }
+            return GraphiteContext(ptr)
+        }
+
+        /**
+         * Creates a Vulkan context using Vulkan 1.1 as the highest API version.
+         *
+         * This overload keeps compatibility with callers written before [maxApiVersion] became
+         * an explicit argument.
          */
         fun makeVulkan(
             instancePtr: NativePointer,
@@ -60,22 +104,18 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
             queuePtr: NativePointer,
             queueFamilyIndex: Int,
         ): GraphiteContext {
-            require(instancePtr != NullPointer) { "Vulkan instance pointer is null" }
-            require(physicalDevicePtr != NullPointer) { "Vulkan physical device pointer is null" }
-            require(devicePtr != NullPointer) { "Vulkan device pointer is null" }
-            require(queuePtr != NullPointer) { "Vulkan queue pointer is null" }
             require(queueFamilyIndex >= 0) { "Vulkan queue family index must not be negative" }
-            Stats.onNativeCall()
-            val ptr = _nMakeVulkan(
-                instancePtr,
-                physicalDevicePtr,
-                devicePtr,
-                queuePtr,
-                queueFamilyIndex,
+            return makeVulkan(
+                instancePtr = instancePtr,
+                physicalDevicePtr = physicalDevicePtr,
+                devicePtr = devicePtr,
+                queuePtr = queuePtr,
+                graphicsQueueIndex = queueFamilyIndex,
+                maxApiVersion = VULKAN_API_VERSION_1_1,
             )
-            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan context" }
-            return GraphiteContext(ptr)
         }
+
+        private const val VULKAN_API_VERSION_1_1 = 0x00401000
     }
 
     /**
@@ -102,12 +142,49 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
      * @param recording recording to insert.
      */
     fun insertRecording(recording: Recording) {
+        insertRecording(InsertRecordingInfo(recording))
+    }
+
+    /**
+     * Adds a recording and associated submission metadata (such as wait/signal semaphores)
+     * to this context's pending GPU work.
+     *
+     * @param info recording insertion parameters.
+     */
+    fun insertRecording(info: InsertRecordingInfo) {
         try {
             Stats.onNativeCall()
-            _nInsertRecording(nativePtr, recording.nativePtr)
+            val waitSemPtrs = NativePointerArray(info.waitSemaphores.size)
+            val signalSemPtrs = NativePointerArray(info.signalSemaphores.size)
+            for (index in info.waitSemaphores.indices) {
+                val semaphore = info.waitSemaphores[index]
+                require(!semaphore.isClosed) { "Wait semaphore is closed" }
+                waitSemPtrs[index] = semaphore.nativePtr
+            }
+            for (index in info.signalSemaphores.indices) {
+                val semaphore = info.signalSemaphores[index]
+                require(!semaphore.isClosed) { "Signal semaphore is closed" }
+                signalSemPtrs[index] = semaphore.nativePtr
+            }
+            interopScope {
+                _nInsertRecording(
+                    nativePtr,
+                    info.recording.nativePtr,
+                    toInterop(waitSemPtrs),
+                    info.waitSemaphores.size,
+                    toInterop(signalSemPtrs),
+                    info.signalSemaphores.size,
+                )
+            }
         } finally {
             reachabilityBarrier(this)
-            reachabilityBarrier(recording)
+            reachabilityBarrier(info.recording)
+            for (sem in info.waitSemaphores) {
+                reachabilityBarrier(sem)
+            }
+            for (sem in info.signalSemaphores) {
+                reachabilityBarrier(sem)
+            }
         }
     }
 
@@ -164,14 +241,22 @@ private external fun _nMakeVulkan(
     physicalDevicePtr: NativePointer,
     devicePtr: NativePointer,
     queuePtr: NativePointer,
-    queueFamilyIndex: Int,
+    graphicsQueueIndex: Int,
+    maxApiVersion: Int,
 ): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nMakeRecorder")
 private external fun _nMakeRecorder(contextPtr: NativePointer): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nInsertRecording")
-private external fun _nInsertRecording(contextPtr: NativePointer, recordingPtr: NativePointer)
+private external fun _nInsertRecording(
+    contextPtr: NativePointer,
+    recordingPtr: NativePointer,
+    waitSemaphoresPtrs: InteropPointer,
+    waitSemaphoresCount: Int,
+    signalSemaphoresPtrs: InteropPointer,
+    signalSemaphoresCount: Int,
+)
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nSubmit")
 private external fun _nSubmit(contextPtr: NativePointer, syncCpu: Boolean)

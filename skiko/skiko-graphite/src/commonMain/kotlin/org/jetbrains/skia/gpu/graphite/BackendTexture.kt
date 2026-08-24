@@ -3,8 +3,10 @@ package org.jetbrains.skia.gpu.graphite
 import org.jetbrains.skia.ExternalSymbolName
 import org.jetbrains.skia.impl.Managed
 import org.jetbrains.skia.impl.Native.Companion.NullPointer
+import org.jetbrains.skia.impl.InteropPointer
 import org.jetbrains.skia.impl.NativePointer
 import org.jetbrains.skia.impl.Stats
+import org.jetbrains.skia.impl.interopScope
 import org.jetbrains.skiko.ExperimentalSkikoApi
 
 /**
@@ -49,9 +51,42 @@ class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _Fi
         }
 
         /**
-         * Creates a Graphite backend texture that wraps a Vulkan image.
+         * Creates a Graphite backend texture that wraps an existing `VkImage`.
          *
-         * The numeric arguments use the Vulkan values from the application that owns the image.
+         * The image memory is assumed to be managed by the client (or by the driver, as is the case
+         * for swapchain images), so no allocation info is passed to Skia.
+         */
+        fun makeVulkan(
+            width: Int,
+            height: Int,
+            textureInfo: VulkanTextureInfo,
+            imageLayout: Int,
+            queueFamilyIndex: Int,
+            imagePtr: NativePointer,
+        ): BackendTexture {
+            requireVulkanSupport()
+            require(imagePtr != NullPointer) { "Vulkan image pointer is null" }
+            require(width > 0 && height > 0) { "Texture dimensions must be positive" }
+            Stats.onNativeCall()
+            val ptr = interopScope {
+                _nMakeVulkan(
+                    width,
+                    height,
+                    toInterop(textureInfo.packToIntArray()),
+                    imageLayout,
+                    queueFamilyIndex,
+                    imagePtr,
+                )
+            }
+            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan backend texture" }
+            return BackendTexture(ptr)
+        }
+
+        /**
+         * Creates a Graphite backend texture from raw Vulkan format and usage values.
+         *
+         * This overload keeps compatibility with callers written before [VulkanTextureInfo]
+         * became part of the public API.
          */
         fun makeVulkan(
             width: Int,
@@ -62,21 +97,18 @@ class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _Fi
             queueFamilyIndex: Int,
             imagePtr: NativePointer,
         ): BackendTexture {
-            require(width > 0 && height > 0) { "Texture dimensions must be positive" }
             require(queueFamilyIndex >= 0) { "Vulkan queue family index must not be negative" }
-            require(imagePtr != NullPointer) { "Vulkan image pointer is null" }
-            Stats.onNativeCall()
-            val ptr = _nMakeVulkan(
-                width,
-                height,
-                format,
-                imageUsage,
-                imageLayout,
-                queueFamilyIndex,
-                imagePtr,
+            return makeVulkan(
+                width = width,
+                height = height,
+                textureInfo = VulkanTextureInfo(
+                    format = VulkanFormat(format),
+                    imageUsageFlags = VulkanImageUsageFlags(imageUsage),
+                ),
+                imageLayout = imageLayout,
+                queueFamilyIndex = queueFamilyIndex,
+                imagePtr = imagePtr,
             )
-            check(ptr != NullPointer) { "Failed to create a Graphite Vulkan backend texture" }
-            return BackendTexture(ptr)
         }
     }
 
@@ -98,8 +130,7 @@ private external fun _nMakeDawn(textureHandle: NativePointer): NativePointer
 private external fun _nMakeVulkan(
     width: Int,
     height: Int,
-    format: Int,
-    imageUsage: Int,
+    textureInfo: InteropPointer,
     imageLayout: Int,
     queueFamilyIndex: Int,
     imagePtr: NativePointer,

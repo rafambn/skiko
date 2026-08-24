@@ -1,31 +1,26 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
 
 import org.jetbrains.compose.internal.publishing.MavenCentralProperties
+import org.gradle.api.tasks.testing.AbstractTestTask
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
+import org.gradle.kotlin.dsl.withType
 import tasks.configuration.*
 import dsl.SkikoDependencyScope
 
 plugins {
-    kotlin("multiplatform") apply false
+    kotlin("multiplatform")
     org.jetbrains.dokka
     `maven-publish`
     signing
     org.gradle.crypto.checksum
 }
 
-// skiko-graphite is included on Linux so CI can publish its common KMP module metadata.
-// With the default properties below, Graphite enables its JVM target on the host
-// platforms that have a native presentation backend in this fork.
-extra["kotlin.internal.suppressGradlePluginErrors"] = "NoKotlinTargetsDeclared"
-apply(plugin = "org.jetbrains.kotlin.multiplatform")
 apply<SideWasmImportsGeneratorPlugin>()
-val kotlin = extensions.getByType<KotlinMultiplatformExtension>()
-
 val skiko = SkikoProperties(rootProject)
 val targetOs = hostOs
 val targetArch = skiko.targetArch
@@ -47,11 +42,19 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
             }
             linux {
                 staticSkiaLibs("skia_graphite_ext")
-                linkFlags("-l:libvulkan.so.1")
+                if (skiko.buildType == SkiaBuildType.DEBUG) {
+                    staticSkiaLibs("spvtools", "spvtools_val")
+                }
+                dynamicSystemLibs("dl")
+                compilerFlags("-DSK_VULKAN", "-DSK_USE_INTERNAL_VULKAN_HEADERS", "-DVK_NO_PROTOTYPES")
             }
             windows {
-                staticSkiaLibs("skia_graphite_dawn_ext", "dawn_combined")
+                staticSkiaLibs("skia_graphite_ext")
+                if (skiko.buildType == SkiaBuildType.DEBUG) {
+                    staticSkiaLibs("spvtools", "spvtools_val")
+                }
                 dynamicSystemLibs("onecore_apiset", "dxguid")
+                compilerFlags("-DSK_VULKAN", "-DSK_USE_INTERNAL_VULKAN_HEADERS", "-DVK_NO_PROTOTYPES")
             }
         }
         native {
@@ -99,7 +102,7 @@ kotlin.run {
 
     applyHierarchyTemplate(skikoSourceSetHierarchyTemplate)
 
-    if (supportAwt && supportGraphiteJvm) {
+    if (supportAwt) {
         jvm("awt") {
             compilations.all {
                 compileTaskProvider.configure {
@@ -174,7 +177,7 @@ kotlin.run {
         implementation(coreProject)
     }
 
-    if (supportAwt && supportGraphiteJvm) {
+    if (supportAwt) {
         graphiteProjectContext.jvmMainSourceSet?.dependencies {
             implementation(kotlin("stdlib"))
         }
@@ -209,7 +212,7 @@ if (supportWeb) {
 }
 
 
-if (supportAwt && supportGraphiteJvm) {
+if (supportAwt) {
     val graphiteAwtJarForTests by project.tasks.registering(Jar::class) {
         archiveBaseName.set("skiko-graphite-awt-test")
         from(kotlin.jvm("awt").compilations["main"].output.allOutputs)
@@ -269,4 +272,13 @@ tasks.withType<KotlinNativeCompile>().configureEach {
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions.freeCompilerArgs.add("-Xexpect-actual-classes")
+}
+
+tasks.withType<AbstractTestTask> {
+    testLogging {
+        events("FAILED", "SKIPPED")
+        exceptionFormat = TestExceptionFormat.FULL
+        showStandardStreams = true
+        showStackTraces = true
+    }
 }
