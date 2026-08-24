@@ -106,6 +106,9 @@ val coreDependencies: SkikoDependencyScope.() -> Unit = {
             android {
                 // Hack to fix problem with linker not always finding certain declarations.
                 directStaticSkiaLibs("skia", "skia_ganesh_ext")
+                // Skia m152 references Chromium's raw_ptr/partition_alloc implementation.
+                // Keep allocator_shim excluded because it replaces the process allocator.
+                staticSkiaLibs("raw_ptr", "allocator_core", "allocator_base")
                 dynamicSystemLibs("GLESv3", "EGL")
             }
         }
