@@ -17,6 +17,8 @@ void* vulkanLibrary = nullptr;
 bool loadVulkanLibrary() {
 #if defined(_WIN32)
     vulkanLibrary = LoadLibrary("vulkan-1.dll");
+#elif defined(__ANDROID__)
+    vulkanLibrary = dlopen("libvulkan.so", RTLD_LAZY | RTLD_LOCAL);
 #else
     vulkanLibrary = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_LOCAL);
 #endif

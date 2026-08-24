@@ -1,5 +1,7 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
 
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.jetbrains.compose.internal.publishing.MavenCentralProperties
 import org.gradle.api.tasks.testing.AbstractTestTask
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -14,10 +16,15 @@ import dsl.SkikoDependencyScope
 
 plugins {
     kotlin("multiplatform")
+    id("com.android.kotlin.multiplatform.library") apply false
     org.jetbrains.dokka
     `maven-publish`
     signing
     org.gradle.crypto.checksum
+}
+
+if (supportAndroid) {
+    apply(plugin = "com.android.kotlin.multiplatform.library")
 }
 
 apply<SideWasmImportsGeneratorPlugin>()
@@ -55,6 +62,17 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
                 }
                 dynamicSystemLibs("onecore_apiset", "dxguid")
                 compilerFlags("-DSK_VULKAN", "-DSK_USE_INTERNAL_VULKAN_HEADERS", "-DVK_NO_PROTOTYPES")
+            }
+            android {
+                staticSkiaLibs("skia_graphite_ext")
+                dynamicSystemLibs("vulkan", "dl")
+                linkFlags("-Wl,--exclude-libs,ALL")
+                compilerFlags(
+                    "-DSK_GRAPHITE=1",
+                    "-DSK_VULKAN",
+                    "-DSK_USE_INTERNAL_VULKAN_HEADERS",
+                    "-DVK_USE_PLATFORM_ANDROID_KHR=1",
+                )
             }
         }
         native {
@@ -108,6 +126,18 @@ kotlin.run {
                 compileTaskProvider.configure {
                     compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
                 }
+            }
+        }
+    }
+
+    if (supportAndroid) {
+        targets.withType<KotlinMultiplatformAndroidLibraryTarget>().configureEach {
+            namespace = "org.jetbrains.skia.gpu.graphite"
+            compileSdk = 35
+            minSdk = 24
+
+            compilerOptions {
+                jvmTarget.set(JvmTarget.JVM_11)
             }
         }
     }
@@ -190,6 +220,12 @@ kotlin.run {
         }
     }
 
+    if (supportAndroid && supportAwt) {
+        sourceSets.named("androidMain") {
+            dependsOn(sourceSets.getByName("jvmMain"))
+        }
+    }
+
 
     if (supportAnyNative) {
         sourceSets.all {
@@ -208,6 +244,47 @@ if (supportWeb) {
     // Kotlin's compilation task does not otherwise track web resources.
     tasks.matching { it.name == "compileKotlinWasmJs" }.configureEach {
         inputs.file(project.file("src/webMain/resources/pre-skiko-graphite.mjs"))
+    }
+}
+
+if (supportAndroid) {
+    val os = OS.Android
+    val graphiteAndroidArtifact by project.tasks.registering(Jar::class) {
+        archiveBaseName.set("skiko-graphite-android")
+        from(kotlin.targets.getByName("android").compilations.getByName("main").output.allOutputs)
+    }
+    val runtimeArchives = mutableMapOf<Arch, FileCollection>()
+
+    for (arch in arrayOf(Arch.X64, Arch.Arm64)) {
+        val coreJvmLinkedLibrary = graphiteProjectContext.jvmLinkedLibraryFor(os, arch).also {
+            dependencies.add(it.name, coreProject)
+        }
+        val coreJvmRuntimeJar = graphiteProjectContext.jvmRuntimeJarFor(os, arch).also {
+            dependencies.add(it.name, coreProject)
+        }
+        val graphiteRuntimeJar = graphiteProjectContext.createSkikoJvmJarTask(
+            os,
+            arch,
+            graphiteAndroidArtifact,
+            files(coreJvmLinkedLibrary),
+        )
+        runtimeArchives[arch] = files(
+            graphiteRuntimeJar.flatMap { it.archiveFile },
+            coreJvmRuntimeJar,
+        )
+        graphiteProjectContext.provideJvmRequiredSymbols(os, arch)
+    }
+
+    val stageAndroidJniLibs = tasks.register<StageAndroidJniLibsTask>("stageAndroidJniLibs") {
+        arm64Archives.from(runtimeArchives.getValue(Arch.Arm64))
+        x64Archives.from(runtimeArchives.getValue(Arch.X64))
+    }
+
+    extensions.getByType<KotlinMultiplatformAndroidComponentsExtension>().onVariants { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(
+            stageAndroidJniLibs,
+            StageAndroidJniLibsTask::outputDirectory,
+        )
     }
 }
 

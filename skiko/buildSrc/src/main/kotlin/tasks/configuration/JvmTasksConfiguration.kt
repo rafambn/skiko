@@ -225,7 +225,11 @@ fun SkikoProjectContext.createCompileJvmBindingsTask(
         "src/jvmMain/cpp/common",
         "src/awtMain/cpp/common",
         "src/awtMain/cpp/${targetOs.id}",
-    ) + if (skiko.includeTestHelpers) projectDirs("src/jvmTest/cpp") else emptyList()
+    ) + if (targetOs == OS.Android) {
+        projectDirs("src/androidMain/cpp")
+    } else {
+        emptyList()
+    } + if (skiko.includeTestHelpers) projectDirs("src/jvmTest/cpp") else emptyList()
     sourceRoots.set(srcDirs)
     if (targetOs != OS.Android) includeHeadersNonRecursive(jdkHome.resolve("include"))
     val skiaDir = skiaJvmBindingsDir.get()
@@ -235,6 +239,9 @@ fun SkikoProjectContext.createCompileJvmBindingsTask(
     includeHeadersNonRecursive(projectDir.resolve("src/jvmMain/cpp/common"))
     includeHeadersNonRecursive(projectDir.resolve("src/jvmMain/cpp/include"))
     includeHeadersNonRecursive(projectDir.resolve("src/commonMain/cpp/common/include"))
+    if (targetOs == OS.Android) {
+        includeHeadersNonRecursive(projectDir.resolve("src/androidMain/cpp/include"))
+    }
     if (kind == SkikoModuleKind.EXTENSION) {
         val coreProjectDir = project.rootProject.projectDir
         includeHeadersNonRecursive(coreProjectDir.resolve("src/jvmMain/cpp/common"))

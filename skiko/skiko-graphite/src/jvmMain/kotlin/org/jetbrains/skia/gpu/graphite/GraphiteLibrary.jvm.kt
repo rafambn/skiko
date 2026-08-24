@@ -17,7 +17,9 @@ internal actual object GraphiteLibrary {
     actual fun load() {
         Library.load()
         graphiteLoader.loadOnce()
-        if ((hostOs == OS.Windows || hostOs == OS.Linux) && !isVulkanLibraryLoaded) {
+        if ((hostOs == OS.Android || hostOs == OS.Windows || hostOs == OS.Linux) &&
+            !isVulkanLibraryLoaded
+        ) {
             loadVulkanLibrary()
             isVulkanLibraryLoaded = true
         }
