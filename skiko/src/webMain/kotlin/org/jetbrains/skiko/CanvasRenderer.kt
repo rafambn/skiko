@@ -1,5 +1,6 @@
 package org.jetbrains.skiko
 
+import kotlinx.browser.window
 import org.jetbrains.skia.*
 import org.jetbrains.skia.impl.NativePointer
 import org.jetbrains.skiko.wasm.ContextAttributes
@@ -136,10 +137,8 @@ internal abstract class CanvasRenderer(
     }
 }
 
-@OptIn(ExperimentalWasmJsInterop::class)
 private fun windowRequestAnimationFrame(callback: (Double) -> Unit) : Int =
-    //language=JavaScript
-    js("window.requestAnimationFrame(callback)")
+    window.requestAnimationFrame(callback)
 
 
 internal external interface GLInterface {

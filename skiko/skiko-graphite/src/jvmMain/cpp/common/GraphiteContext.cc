@@ -138,3 +138,19 @@ Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nSubmit(
     context->submit(skgpu::graphite::SubmitInfo(
             syncCpu ? skgpu::graphite::SyncToCpu::kYes : skgpu::graphite::SyncToCpu::kNo));
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nCheckAsyncWorkCompletion(
+        JNIEnv*, jclass, jlong contextPtr) {
+    auto context = reinterpret_cast<skgpu::graphite::Context*>(
+            static_cast<uintptr_t>(contextPtr));
+    context->checkAsyncWorkCompletion();
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nHasUnfinishedGpuWork(
+        JNIEnv*, jclass, jlong contextPtr) {
+    auto context = reinterpret_cast<skgpu::graphite::Context*>(
+            static_cast<uintptr_t>(contextPtr));
+    return context->hasUnfinishedGpuWork();
+}

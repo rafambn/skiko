@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 val kspVersion: String by project
 
 plugins {
@@ -11,7 +13,9 @@ repositories {
 }
 
 kotlin {
-    jvm()
+    jvm {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+    }
     sourceSets {
         val jvmMain by getting {
             dependencies {

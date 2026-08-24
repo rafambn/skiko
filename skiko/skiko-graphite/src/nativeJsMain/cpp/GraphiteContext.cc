@@ -84,3 +84,15 @@ SKIKO_EXPORT void org_jetbrains_skia_gpu_graphite_GraphiteContext__1nSubmit(
     context->submit(skgpu::graphite::SubmitInfo(
             syncCpu ? skgpu::graphite::SyncToCpu::kYes : skgpu::graphite::SyncToCpu::kNo));
 }
+
+SKIKO_EXPORT void org_jetbrains_skia_gpu_graphite_GraphiteContext__1nCheckAsyncWorkCompletion(
+        KNativePointer contextPtr) {
+    auto context = reinterpret_cast<skgpu::graphite::Context*>(contextPtr);
+    context->checkAsyncWorkCompletion();
+}
+
+SKIKO_EXPORT KBoolean org_jetbrains_skia_gpu_graphite_GraphiteContext__1nHasUnfinishedGpuWork(
+        KNativePointer contextPtr) {
+    auto context = reinterpret_cast<skgpu::graphite::Context*>(contextPtr);
+    return context->hasUnfinishedGpuWork();
+}

@@ -45,7 +45,10 @@ const awaitSkikoCore = loadSkikoWASM().then((module) => {
         if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:")) {
             return path;
         }
-        return originalLocateFile(path, prefix);
+        if (typeof originalLocateFile === "function") {
+            return originalLocateFile(path, prefix);
+        }
+        return new URL(path, prefix || import.meta.url).href;
     };
     loadedWasm._ = module.wasmExports;
     if (!module.wasmExports.memory) {

@@ -57,6 +57,8 @@ fun SkikoProjectContext.declareWasmTasks() {
         return
     }
     val isSideModule = kind == SkikoModuleKind.EXTENSION
+    val pthreadsExperiment =
+        project.findProperty("graphite.pthreadsExperiment") == "true"
 
     val skiaWasmDir = registerOrGetSkiaDirProvider(OS.Wasm, Arch.Wasm, false)
     val compileWasm by project.tasks.registering(CompileSkikoCppTask::class) {
@@ -87,6 +89,10 @@ fun SkikoProjectContext.declareWasmTasks() {
                 add("-fno-rtti")
                 add("-fno-exceptions")
                 add("-fPIC")
+                if (pthreadsExperiment) {
+                    add("-pthread")
+                    add("-DGRAPHITE_PTHREADS_EXPERIMENT=1")
+                }
                 if (skiko.isWasmBuildWithProfiling) add("--profiling")
             }
         )
@@ -127,6 +133,20 @@ fun SkikoProjectContext.declareWasmTasks() {
             )
 
             if (skiko.isWasmBuildWithProfiling) add("--profiling")
+            if (pthreadsExperiment) {
+                add("-pthread")
+                addAll(listOf("-s", "ASSERTIONS=2"))
+                if (!isSideModule) {
+                    addAll(
+                        listOf(
+                            "-s", "ALLOW_BLOCKING_ON_MAIN_THREAD=0",
+                            "-s", "OFFSCREENCANVAS_SUPPORT=1",
+                            "-s", "EXPORTED_FUNCTIONS=['_graphite_pthread_request_device','_graphite_pthread_current_texture_handle']",
+                            "-s", "PTHREAD_POOL_SIZE=3",
+                        ),
+                    )
+                }
+            }
             addAll(resolvedBinaryInputs.linkFlags)
         })
 
@@ -269,12 +289,21 @@ fun SkikoProjectContext.declareWasmTasks() {
         from(optimizeWasm) {
             include("*.wasm")
             include("*.mjs")
+            if (pthreadsExperiment) {
+                filesMatching("skiko.mjs") {
+                    filter { line ->
+                        line.replace("skiko.unoptimized.mjs", "skiko.mjs")
+                    }
+                }
+            }
         }
 
-        from(optimizeWasmD8) {
-            include("*.mjs")
-            filesMatching("*.mjs") {
-                filter { it.replace("${libBaseName}d8.wasm", "$libBaseName.wasm") }
+        if (!pthreadsExperiment) {
+            from(optimizeWasmD8) {
+                include("*.mjs")
+                filesMatching("*.mjs") {
+                    filter { it.replace("${libBaseName}d8.wasm", "$libBaseName.wasm") }
+                }
             }
         }
 

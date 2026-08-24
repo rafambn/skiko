@@ -125,6 +125,25 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
         }
     }
 
+    /** Polls completion callbacks for GPU work without waiting for the CPU. */
+    fun checkAsyncWorkCompletion() {
+        try {
+            Stats.onNativeCall()
+            _nCheckAsyncWorkCompletion(nativePtr)
+        } finally {
+            reachabilityBarrier(this)
+        }
+    }
+
+    /** Whether this context still owns at least one unfinished GPU submission. */
+    val hasUnfinishedGpuWork: Boolean
+        get() = try {
+            Stats.onNativeCall()
+            _nHasUnfinishedGpuWork(nativePtr)
+        } finally {
+            reachabilityBarrier(this)
+        }
+
     private object _FinalizerHolder {
         val PTR = _nGetGraphiteContextFinalizer()
     }
@@ -156,3 +175,9 @@ private external fun _nInsertRecording(contextPtr: NativePointer, recordingPtr: 
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nSubmit")
 private external fun _nSubmit(contextPtr: NativePointer, syncCpu: Boolean)
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nCheckAsyncWorkCompletion")
+private external fun _nCheckAsyncWorkCompletion(contextPtr: NativePointer)
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nHasUnfinishedGpuWork")
+private external fun _nHasUnfinishedGpuWork(contextPtr: NativePointer): Boolean
