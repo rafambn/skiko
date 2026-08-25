@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cmath>
 #include <dlfcn.h>
 #include <memory>
 #include <mutex>
@@ -614,14 +615,19 @@ public:
     void drawImmutablePath(
             const std::vector<uint8_t>& verbs,
             const std::vector<float>& points,
+            const std::vector<float>& weights,
+            int fillType,
             uint32_t color,
             bool stroke,
             float strokeWidth,
             bool antiAlias) {
         if (canvas_ == nullptr) return;
+        if (weights.size() != verbs.size()) return;
         SkPathBuilder builder;
+        builder.setFillType(fillType == 1 ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
         size_t pointIndex = 0;
-        for (uint8_t verb : verbs) {
+        for (size_t verbIndex = 0; verbIndex < verbs.size(); ++verbIndex) {
+            const uint8_t verb = verbs[verbIndex];
             switch (verb) {
                 case 1:
                     if (pointIndex + 2 > points.size()) return;
@@ -634,6 +640,29 @@ public:
                     pointIndex += 2;
                     break;
                 case 3:
+                    if (pointIndex + 4 > points.size()) return;
+                    builder.quadTo(
+                            points[pointIndex], points[pointIndex + 1],
+                            points[pointIndex + 2], points[pointIndex + 3]);
+                    pointIndex += 4;
+                    break;
+                case 4:
+                    if (pointIndex + 4 > points.size() ||
+                        !std::isfinite(weights[verbIndex]) || weights[verbIndex] <= 0.0f) return;
+                    builder.conicTo(
+                            points[pointIndex], points[pointIndex + 1],
+                            points[pointIndex + 2], points[pointIndex + 3], weights[verbIndex]);
+                    pointIndex += 4;
+                    break;
+                case 5:
+                    if (pointIndex + 6 > points.size()) return;
+                    builder.cubicTo(
+                            points[pointIndex], points[pointIndex + 1],
+                            points[pointIndex + 2], points[pointIndex + 3],
+                            points[pointIndex + 4], points[pointIndex + 5]);
+                    pointIndex += 6;
+                    break;
+                case 6:
                     builder.close();
                     break;
                 default:
@@ -1641,19 +1670,22 @@ Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_drawPath(
 
 extern "C" JNIEXPORT void JNICALL
 Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_drawImmutablePath(
-    JNIEnv* env, jclass, jlong handle, jbyteArray verbs, jfloatArray points, jint color,
-    jboolean stroke, jfloat strokeWidth, jboolean antiAlias) {
-    if (verbs == nullptr || points == nullptr) return;
+    JNIEnv* env, jclass, jlong handle, jbyteArray verbs, jfloatArray points, jfloatArray weights,
+    jint fillType, jint color, jboolean stroke, jfloat strokeWidth, jboolean antiAlias) {
+    if (verbs == nullptr || points == nullptr || weights == nullptr) return;
     std::vector<uint8_t> nativeVerbs(static_cast<size_t>(env->GetArrayLength(verbs)));
     std::vector<float> nativePoints(static_cast<size_t>(env->GetArrayLength(points)));
+    std::vector<float> nativeWeights(static_cast<size_t>(env->GetArrayLength(weights)));
     env->GetByteArrayRegion(
             verbs, 0, static_cast<jsize>(nativeVerbs.size()),
             reinterpret_cast<jbyte*>(nativeVerbs.data()));
     env->GetFloatArrayRegion(points, 0, static_cast<jsize>(nativePoints.size()), nativePoints.data());
+    env->GetFloatArrayRegion(
+            weights, 0, static_cast<jsize>(nativeWeights.size()), nativeWeights.data());
     if (GraphiteEngine* engine = fromHandle(handle)) {
         engine->drawImmutablePath(
-                nativeVerbs, nativePoints, static_cast<uint32_t>(color), stroke == JNI_TRUE,
-                strokeWidth, antiAlias == JNI_TRUE);
+                nativeVerbs, nativePoints, nativeWeights, fillType, static_cast<uint32_t>(color),
+                stroke == JNI_TRUE, strokeWidth, antiAlias == JNI_TRUE);
     }
 }
 

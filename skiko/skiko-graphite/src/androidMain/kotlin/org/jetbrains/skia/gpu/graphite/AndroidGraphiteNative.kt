@@ -97,6 +97,8 @@ public object AndroidGraphiteNative {
         handle: Long,
         verbs: ByteArray,
         points: FloatArray,
+        weights: FloatArray,
+        fillType: Int,
         color: Int,
         stroke: Boolean,
         strokeWidth: Float,
