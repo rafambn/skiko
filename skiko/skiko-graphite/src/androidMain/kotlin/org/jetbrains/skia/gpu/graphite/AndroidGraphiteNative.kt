@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.skiko.ExperimentalSkikoApi::class)
+
 package org.jetbrains.skia.gpu.graphite
 
 import android.view.Surface
@@ -35,6 +37,43 @@ public object AndroidGraphiteNative {
     /** Releases the native engine and all GPU resources owned by it. */
     @JvmStatic
     public external fun dispose(handle: Long)
+
+    /** Creates a worker-owned recorder from this engine's Graphite context. */
+    public fun makeRecorder(handle: Long): Recorder {
+        val ptr = nMakeRecorder(handle)
+        check(ptr != 0L) { "Could not create an Android Graphite recorder" }
+        return Recorder(ptr)
+    }
+
+    /** Copies the current presentation target compatibility information. */
+    public fun targetTextureInfo(handle: Long): TextureInfo {
+        val ptr = nTargetTextureInfo(handle)
+        check(ptr != 0L) { "Android Graphite target is not ready" }
+        return TextureInfo(ptr)
+    }
+
+    /** Inserts a deferred recording into the active presentation surface. */
+    public fun insertRecording(
+        handle: Long,
+        recording: Recording,
+        translationX: Int,
+        translationY: Int,
+        clipLeft: Int,
+        clipTop: Int,
+        clipRight: Int,
+        clipBottom: Int,
+        hasClip: Boolean,
+    ): Boolean = nInsertRecording(
+        handle,
+        recording.nativePtr,
+        translationX,
+        translationY,
+        clipLeft,
+        clipTop,
+        clipRight,
+        clipBottom,
+        hasClip,
+    )
 
     /** Clears the active frame with an ARGB color. */
     @JvmStatic
@@ -174,4 +213,23 @@ public object AndroidGraphiteNative {
         strokeWidth: Float,
         antiAlias: Boolean,
     )
+
+    @JvmStatic
+    private external fun nMakeRecorder(handle: Long): Long
+
+    @JvmStatic
+    private external fun nTargetTextureInfo(handle: Long): Long
+
+    @JvmStatic
+    private external fun nInsertRecording(
+        handle: Long,
+        recordingPtr: Long,
+        translationX: Int,
+        translationY: Int,
+        clipLeft: Int,
+        clipTop: Int,
+        clipRight: Int,
+        clipBottom: Int,
+        hasClip: Boolean,
+    ): Boolean
 }

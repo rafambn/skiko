@@ -7,6 +7,7 @@ import org.jetbrains.skia.impl.Native.Companion.NullPointer
 import org.jetbrains.skia.impl.NativePointer
 import org.jetbrains.skia.impl.NativePointerArray
 import org.jetbrains.skia.impl.Stats
+import org.jetbrains.skia.impl.getPtr
 import org.jetbrains.skia.impl.interopScope
 import org.jetbrains.skia.impl.reachabilityBarrier
 import org.jetbrains.skiko.ExperimentalSkikoApi
@@ -167,18 +168,29 @@ class GraphiteContext internal constructor(ptr: NativePointer) : Managed(ptr, _F
                 signalSemPtrs[index] = semaphore.nativePtr
             }
             interopScope {
-                _nInsertRecording(
-                    nativePtr,
-                    info.recording.nativePtr,
-                    toInterop(waitSemPtrs),
-                    info.waitSemaphores.size,
-                    toInterop(signalSemPtrs),
-                    info.signalSemaphores.size,
-                )
+                check(
+                    _nInsertRecording(
+                        nativePtr,
+                        info.recording.nativePtr,
+                        getPtr(info.targetSurface),
+                        info.targetTranslation.x,
+                        info.targetTranslation.y,
+                        info.targetClip?.left ?: 0,
+                        info.targetClip?.top ?: 0,
+                        info.targetClip?.right ?: 0,
+                        info.targetClip?.bottom ?: 0,
+                        info.targetClip != null,
+                        toInterop(waitSemPtrs),
+                        info.waitSemaphores.size,
+                        toInterop(signalSemPtrs),
+                        info.signalSemaphores.size,
+                    ),
+                ) { "Failed to insert a Graphite recording" }
             }
         } finally {
             reachabilityBarrier(this)
             reachabilityBarrier(info.recording)
+            reachabilityBarrier(info.targetSurface)
             for (sem in info.waitSemaphores) {
                 reachabilityBarrier(sem)
             }
@@ -252,11 +264,19 @@ private external fun _nMakeRecorder(contextPtr: NativePointer): NativePointer
 private external fun _nInsertRecording(
     contextPtr: NativePointer,
     recordingPtr: NativePointer,
+    targetSurfacePtr: NativePointer,
+    targetTranslationX: Int,
+    targetTranslationY: Int,
+    targetClipLeft: Int,
+    targetClipTop: Int,
+    targetClipRight: Int,
+    targetClipBottom: Int,
+    hasTargetClip: Boolean,
     waitSemaphoresPtrs: InteropPointer,
     waitSemaphoresCount: Int,
     signalSemaphoresPtrs: InteropPointer,
     signalSemaphoresCount: Int,
-)
+): Boolean
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_GraphiteContext__1nSubmit")
 private external fun _nSubmit(contextPtr: NativePointer, syncCpu: Boolean)

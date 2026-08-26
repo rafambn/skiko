@@ -42,6 +42,7 @@
 #include "include/gpu/graphite/vk/VulkanGraphiteTypes.h"
 #include "include/gpu/vk/VulkanBackendContext.h"
 #include "include/gpu/vk/VulkanExtensions.h"
+#include "GraphiteImageProvider.hh"
 
 namespace {
 
@@ -361,6 +362,67 @@ public:
 
     void setFrameTimeNanos(int64_t frameTimeNanos) {
         frameTimeNanos_ = frameTimeNanos;
+    }
+
+    std::unique_ptr<skgpu::graphite::Recorder> makeRecorder() {
+        if (context_ == nullptr) return nullptr;
+        skgpu::graphite::RecorderOptions options{};
+        options.fImageProvider = SkikoGraphiteImageProvider::Make();
+        options.fRequireOrderedRecordings = false;
+        return context_->makeRecorder(options);
+    }
+
+    std::unique_ptr<skgpu::graphite::TextureInfo> targetTextureInfo() const {
+        if (context_ == nullptr) return nullptr;
+        if (hardwareBufferOutput_) {
+            if (frameSlots_.empty() || !frameSlots_.front().hardwareBackendTexture.isValid()) {
+                return nullptr;
+            }
+            return std::make_unique<skgpu::graphite::TextureInfo>(
+                    frameSlots_.front().hardwareBackendTexture.info());
+        }
+        if (swapchainImages_.empty() || swapchainFormat_ == VK_FORMAT_UNDEFINED) return nullptr;
+        skgpu::graphite::VulkanTextureInfo textureInfo(
+                VK_SAMPLE_COUNT_1_BIT,
+                skgpu::Mipmapped::kNo,
+                0,
+                swapchainFormat_,
+                VK_IMAGE_TILING_OPTIMAL,
+                swapchainImageUsage_,
+                VK_SHARING_MODE_EXCLUSIVE,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                {});
+        const auto backendTexture = skgpu::graphite::BackendTextures::MakeVulkan(
+                {static_cast<int>(swapchainExtent_.width),
+                 static_cast<int>(swapchainExtent_.height)},
+                textureInfo,
+                imageLayouts_.front(),
+                queueFamilyIndex_,
+                swapchainImages_.front(),
+                {});
+        return std::make_unique<skgpu::graphite::TextureInfo>(backendTexture.info());
+    }
+
+    bool insertRecording(
+            skgpu::graphite::Recording* recording,
+            int translationX,
+            int translationY,
+            int clipLeft,
+            int clipTop,
+            int clipRight,
+            int clipBottom,
+            bool hasClip) {
+        if (recording == nullptr || frameSurface_ == nullptr || !flushPresentationRecording()) {
+            return false;
+        }
+        skgpu::graphite::InsertRecordingInfo info{};
+        info.fRecording = recording;
+        info.fTargetSurface = frameSurface_.get();
+        info.fTargetTranslation = SkIVector::Make(translationX, translationY);
+        if (hasClip) {
+            info.fTargetClip = SkIRect::MakeLTRB(clipLeft, clipTop, clipRight, clipBottom);
+        }
+        return context_->insertRecording(info) == skgpu::graphite::InsertStatus::kSuccess;
     }
 
     bool beginFrame() {
@@ -717,6 +779,19 @@ public:
     }
 
 private:
+    bool flushPresentationRecording() {
+        if (activeFrameSlotIndex_ < 0) return false;
+        FrameSlot& frameSlot = frameSlots_[static_cast<size_t>(activeFrameSlotIndex_)];
+        std::unique_ptr<skgpu::graphite::Recording> recording = frameSlot.recorder->snap();
+        if (recording == nullptr) return false;
+        skgpu::graphite::InsertRecordingInfo info{};
+        info.fRecording = recording.get();
+        if (context_->insertRecording(info) != skgpu::graphite::InsertStatus::kSuccess) {
+            return false;
+        }
+        return true;
+    }
+
     static SkPaint makePaint(uint32_t color, bool stroke, float strokeWidth, bool antiAlias) {
         SkPaint paint;
         paint.setColor(static_cast<SkColor>(color));
@@ -1556,6 +1631,51 @@ Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_dispose(
     if (engine != nullptr) {
         delete engine;
     }
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_nMakeRecorder(
+        JNIEnv*, jclass, jlong handle) {
+    GraphiteEngine* engine = fromHandle(handle);
+    if (engine == nullptr) return 0;
+    return reinterpret_cast<jlong>(engine->makeRecorder().release());
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_nTargetTextureInfo(
+        JNIEnv*, jclass, jlong handle) {
+    GraphiteEngine* engine = fromHandle(handle);
+    if (engine == nullptr) return 0;
+    return reinterpret_cast<jlong>(engine->targetTextureInfo().release());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_nInsertRecording(
+        JNIEnv*,
+        jclass,
+        jlong handle,
+        jlong recordingPtr,
+        jint translationX,
+        jint translationY,
+        jint clipLeft,
+        jint clipTop,
+        jint clipRight,
+        jint clipBottom,
+        jboolean hasClip) {
+    GraphiteEngine* engine = fromHandle(handle);
+    auto recording = reinterpret_cast<skgpu::graphite::Recording*>(
+            static_cast<uintptr_t>(recordingPtr));
+    return engine != nullptr && engine->insertRecording(
+            recording,
+            translationX,
+            translationY,
+            clipLeft,
+            clipTop,
+            clipRight,
+            clipBottom,
+            hasClip == JNI_TRUE)
+            ? JNI_TRUE
+            : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL

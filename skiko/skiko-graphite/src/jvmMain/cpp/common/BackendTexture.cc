@@ -19,6 +19,15 @@ Java_org_jetbrains_skia_gpu_graphite_BackendTextureKt__1nGetBackendTextureFinali
 }
 
 extern "C" JNIEXPORT jlong JNICALL
+Java_org_jetbrains_skia_gpu_graphite_BackendTextureKt__1nGetTextureInfo(
+        JNIEnv*, jclass, jlong backendTexturePtr) {
+    auto texture = reinterpret_cast<skgpu::graphite::BackendTexture*>(
+            static_cast<uintptr_t>(backendTexturePtr));
+    if (!texture || !texture->isValid()) return 0;
+    return reinterpret_cast<jlong>(new skgpu::graphite::TextureInfo(texture->info()));
+}
+
+extern "C" JNIEXPORT jlong JNICALL
 Java_org_jetbrains_skia_gpu_graphite_BackendTextureKt__1nMakeMetal(
         JNIEnv*, jclass, jint width, jint height, jlong texturePtr) {
 #if defined(SK_METAL)

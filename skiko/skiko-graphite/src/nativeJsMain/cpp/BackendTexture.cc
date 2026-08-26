@@ -18,6 +18,14 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_BackendTexture__1nGe
     return reinterpret_cast<KNativePointer>(&deleteBackendTexture);
 }
 
+SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_BackendTexture__1nGetTextureInfo(
+        KNativePointer backendTexturePtr) {
+    auto texture = reinterpret_cast<skgpu::graphite::BackendTexture*>(backendTexturePtr);
+    if (!texture || !texture->isValid()) return 0;
+    return reinterpret_cast<KNativePointer>(
+            new skgpu::graphite::TextureInfo(texture->info()));
+}
+
 SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeMetal(
         KInt width, KInt height, KNativePointer texturePtr) {
 #if defined(__EMSCRIPTEN__)

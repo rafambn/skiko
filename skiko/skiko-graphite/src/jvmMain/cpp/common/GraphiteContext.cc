@@ -7,6 +7,7 @@
 #include "include/gpu/graphite/ContextOptions.h"
 #include "include/gpu/graphite/GraphiteTypes.h"
 #include "include/gpu/graphite/Recorder.h"
+#include "include/core/SkSurface.h"
 #if defined(SK_METAL)
 #include "include/gpu/graphite/mtl/MtlBackendContext.h"
 #endif
@@ -36,7 +37,7 @@ Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nMakeMetal(
             reinterpret_cast<CFTypeRef>(static_cast<uintptr_t>(queuePtr)));
 
     skgpu::graphite::ContextOptions options{};
-    options.fRequireOrderedRecordings = true;
+    options.fRequireOrderedRecordings = false;
     return reinterpret_cast<jlong>(
             skgpu::graphite::ContextFactory::MakeMetal(backendContext, options).release());
 #else
@@ -65,7 +66,7 @@ Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nMakeVulkan(
     }
 
     skgpu::graphite::ContextOptions options{};
-    options.fRequireOrderedRecordings = true;
+    options.fRequireOrderedRecordings = false;
     auto context = skgpu::graphite::ContextFactory::MakeVulkan(backendContext, options);
     return reinterpret_cast<jlong>(context.release());
 #else
@@ -83,23 +84,38 @@ Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nMakeRecorder(
     return reinterpret_cast<jlong>(context->makeRecorder(options).release());
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nInsertRecording(
         JNIEnv* env,
         jclass,
         jlong contextPtr,
         jlong recordingPtr,
+        jlong targetSurfacePtr,
+        jint targetTranslationX,
+        jint targetTranslationY,
+        jint targetClipLeft,
+        jint targetClipTop,
+        jint targetClipRight,
+        jint targetClipBottom,
+        jboolean hasTargetClip,
         jlongArray waitSemaphoresPtrs,
         jint waitSemaphoresCount,
         jlongArray signalSemaphoresPtrs,
         jint signalSemaphoresCount) {
     auto context = reinterpret_cast<skgpu::graphite::Context*>(
             static_cast<uintptr_t>(contextPtr));
-    if (!context) return;
+    if (!context) return JNI_FALSE;
 
     skgpu::graphite::InsertRecordingInfo info{};
     info.fRecording = reinterpret_cast<skgpu::graphite::Recording*>(
             static_cast<uintptr_t>(recordingPtr));
+    info.fTargetSurface = reinterpret_cast<SkSurface*>(
+            static_cast<uintptr_t>(targetSurfacePtr));
+    info.fTargetTranslation = SkIVector::Make(targetTranslationX, targetTranslationY);
+    if (hasTargetClip) {
+        info.fTargetClip = SkIRect::MakeLTRB(
+                targetClipLeft, targetClipTop, targetClipRight, targetClipBottom);
+    }
 
     std::vector<skgpu::graphite::BackendSemaphore> waitSemaphores;
     if (waitSemaphoresPtrs && waitSemaphoresCount > 0) {
@@ -129,7 +145,9 @@ Java_org_jetbrains_skia_gpu_graphite_GraphiteContextKt__1nInsertRecording(
     info.fNumSignalSemaphores = signalSemaphores.size();
     info.fSignalSemaphores = signalSemaphores.data();
 
-    context->insertRecording(info);
+    return context->insertRecording(info) == skgpu::graphite::InsertStatus::kSuccess
+            ? JNI_TRUE
+            : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL

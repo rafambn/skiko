@@ -8,6 +8,7 @@
 #include "include/gpu/graphite/ContextOptions.h"
 #include "include/gpu/graphite/GraphiteTypes.h"
 #include "include/gpu/graphite/Recorder.h"
+#include "include/core/SkSurface.h"
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/html5_webgpu.h>
 #include <webgpu/webgpu_cpp.h>
@@ -34,7 +35,7 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_GraphiteContext__1nM
     backendContext.fQueue.retain(reinterpret_cast<CFTypeRef>(queuePtr));
 
     skgpu::graphite::ContextOptions options{};
-    options.fRequireOrderedRecordings = true;
+    options.fRequireOrderedRecordings = false;
     return reinterpret_cast<KNativePointer>(
             skgpu::graphite::ContextFactory::MakeMetal(backendContext, options).release());
 #endif
@@ -52,7 +53,7 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_GraphiteContext__1nM
     backendContext.fQueue = backendContext.fDevice.GetQueue();
 
     skgpu::graphite::ContextOptions options{};
-    options.fRequireOrderedRecordings = true;
+    options.fRequireOrderedRecordings = false;
     return reinterpret_cast<KNativePointer>(
             skgpu::graphite::ContextFactory::MakeDawn(backendContext, options).release());
 #else
@@ -78,18 +79,32 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_gpu_graphite_GraphiteContext__1nM
     return reinterpret_cast<KNativePointer>(context->makeRecorder(options).release());
 }
 
-SKIKO_EXPORT void org_jetbrains_skia_gpu_graphite_GraphiteContext__1nInsertRecording(
+SKIKO_EXPORT KBoolean org_jetbrains_skia_gpu_graphite_GraphiteContext__1nInsertRecording(
         KNativePointer contextPtr,
         KNativePointer recordingPtr,
+        KNativePointer targetSurfacePtr,
+        KInt targetTranslationX,
+        KInt targetTranslationY,
+        KInt targetClipLeft,
+        KInt targetClipTop,
+        KInt targetClipRight,
+        KInt targetClipBottom,
+        KBoolean hasTargetClip,
         KInteropPointer waitSemaphoresPtrs,
         KInt waitSemaphoresCount,
         KInteropPointer signalSemaphoresPtrs,
         KInt signalSemaphoresCount) {
     auto context = reinterpret_cast<skgpu::graphite::Context*>(contextPtr);
-    if (!context) return;
+    if (!context) return false;
 
     skgpu::graphite::InsertRecordingInfo info{};
     info.fRecording = reinterpret_cast<skgpu::graphite::Recording*>(recordingPtr);
+    info.fTargetSurface = reinterpret_cast<SkSurface*>(targetSurfacePtr);
+    info.fTargetTranslation = SkIVector::Make(targetTranslationX, targetTranslationY);
+    if (hasTargetClip) {
+        info.fTargetClip = SkIRect::MakeLTRB(
+                targetClipLeft, targetClipTop, targetClipRight, targetClipBottom);
+    }
 
     std::vector<skgpu::graphite::BackendSemaphore> waitSemaphores;
     if (waitSemaphoresPtrs && waitSemaphoresCount > 0) {
@@ -115,7 +130,7 @@ SKIKO_EXPORT void org_jetbrains_skia_gpu_graphite_GraphiteContext__1nInsertRecor
     info.fNumSignalSemaphores = signalSemaphores.size();
     info.fSignalSemaphores = signalSemaphores.data();
 
-    context->insertRecording(info);
+    return context->insertRecording(info) == skgpu::graphite::InsertStatus::kSuccess;
 }
 
 SKIKO_EXPORT void org_jetbrains_skia_gpu_graphite_GraphiteContext__1nSubmit(

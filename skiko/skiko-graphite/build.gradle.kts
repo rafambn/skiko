@@ -43,12 +43,22 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
     targets {
         jvm {
             macos {
-                staticSkiaLibs("skia_graphite_ext")
+                staticSkiaLibs("skia", "skia_graphite_ext")
                 linkFlags("-lobjc")
-                frameworks("CoreFoundation", "Foundation", "Metal")
+                frameworks(
+                    "AppKit",
+                    "CoreFoundation",
+                    "CoreGraphics",
+                    "CoreServices",
+                    "CoreText",
+                    "Foundation",
+                    "IOKit",
+                    "Metal",
+                    "QuartzCore",
+                )
             }
             linux {
-                staticSkiaLibs("skia_graphite_ext")
+                staticSkiaLibs("skia", "skia_graphite_ext")
                 if (skiko.buildType == SkiaBuildType.DEBUG) {
                     staticSkiaLibs("spvtools", "spvtools_val")
                 }
@@ -56,7 +66,7 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
                 compilerFlags("-DSK_VULKAN", "-DSK_USE_INTERNAL_VULKAN_HEADERS", "-DVK_NO_PROTOTYPES")
             }
             windows {
-                staticSkiaLibs("skia_graphite_ext")
+                staticSkiaLibs("skia", "skia_graphite_ext")
                 if (skiko.buildType == SkiaBuildType.DEBUG) {
                     staticSkiaLibs("spvtools", "spvtools_val")
                 }
@@ -64,7 +74,7 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
                 compilerFlags("-DSK_VULKAN", "-DSK_USE_INTERNAL_VULKAN_HEADERS", "-DVK_NO_PROTOTYPES")
             }
             android {
-                staticSkiaLibs("skia_graphite_ext")
+                staticSkiaLibs("skia", "skia_graphite_ext")
                 dynamicSystemLibs("vulkan", "dl")
                 linkFlags("-Wl,--exclude-libs,ALL")
                 compilerFlags(
@@ -76,10 +86,16 @@ val graphiteDependencies: SkikoDependencyScope.() -> Unit = {
             }
         }
         native {
-            staticSkiaLibs("skia_graphite_ext")
-            macos { frameworks("CoreFoundation", "Foundation", "Metal") }
-            ios { frameworks("CoreFoundation", "Foundation", "Metal") }
-            tvos { frameworks("CoreFoundation", "Foundation", "Metal") }
+            staticSkiaLibs("skia", "skia_graphite_ext")
+            macos {
+                frameworks("CoreFoundation", "CoreGraphics", "CoreServices", "CoreText", "Foundation", "Metal")
+            }
+            ios {
+                frameworks("CoreFoundation", "CoreGraphics", "CoreText", "Foundation", "Metal", "UIKit")
+            }
+            tvos {
+                frameworks("CoreFoundation", "CoreGraphics", "CoreText", "Foundation", "Metal", "UIKit")
+            }
         }
         wasm {
             staticSkiaLibs("skia_graphite_dawn_ext")

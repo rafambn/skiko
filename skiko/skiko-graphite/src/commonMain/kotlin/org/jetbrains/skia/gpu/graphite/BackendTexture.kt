@@ -14,6 +14,15 @@ import org.jetbrains.skiko.ExperimentalSkikoApi
  */
 @ExperimentalSkikoApi
 class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _FinalizerHolder.PTR) {
+    /** Returns a copy of the compatibility information for this texture. */
+    val textureInfo: TextureInfo
+        get() {
+            Stats.onNativeCall()
+            val ptr = _nGetTextureInfo(nativePtr)
+            check(ptr != NullPointer) { "Backend texture has no valid texture info" }
+            return TextureInfo(ptr)
+        }
+
     companion object {
         init {
             GraphiteLibrary.load()
@@ -119,6 +128,9 @@ class BackendTexture internal constructor(ptr: NativePointer) : Managed(ptr, _Fi
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nGetFinalizer")
 private external fun _nGetBackendTextureFinalizer(): NativePointer
+
+@ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nGetTextureInfo")
+private external fun _nGetTextureInfo(backendTexturePtr: NativePointer): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_gpu_graphite_BackendTexture__1nMakeMetal")
 private external fun _nMakeMetal(width: Int, height: Int, texturePtr: NativePointer): NativePointer
