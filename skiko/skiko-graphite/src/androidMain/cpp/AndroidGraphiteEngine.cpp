@@ -682,6 +682,9 @@ public:
             uint32_t color,
             bool stroke,
             float strokeWidth,
+            int strokeCap,
+            int strokeJoin,
+            float strokeMiter,
             bool antiAlias) {
         if (canvas_ == nullptr) return;
         if (weights.size() != verbs.size()) return;
@@ -732,7 +735,8 @@ public:
             }
         }
         if (pointIndex != points.size()) return;
-        const SkPaint paint = makePaint(color, stroke, strokeWidth, antiAlias);
+        const SkPaint paint = makePaint(
+                color, stroke, strokeWidth, antiAlias, strokeCap, strokeJoin, strokeMiter);
         canvas_->drawPath(builder.detach(), paint);
     }
 
@@ -792,11 +796,21 @@ private:
         return true;
     }
 
-    static SkPaint makePaint(uint32_t color, bool stroke, float strokeWidth, bool antiAlias) {
+    static SkPaint makePaint(
+            uint32_t color,
+            bool stroke,
+            float strokeWidth,
+            bool antiAlias,
+            int strokeCap = 0,
+            int strokeJoin = 0,
+            float strokeMiter = 4.0f) {
         SkPaint paint;
         paint.setColor(static_cast<SkColor>(color));
         paint.setStyle(stroke ? SkPaint::kStroke_Style : SkPaint::kFill_Style);
         paint.setStrokeWidth(strokeWidth);
+        paint.setStrokeCap(static_cast<SkPaint::Cap>(strokeCap));
+        paint.setStrokeJoin(static_cast<SkPaint::Join>(strokeJoin));
+        paint.setStrokeMiter(strokeMiter);
         paint.setAntiAlias(antiAlias);
         return paint;
     }
@@ -1791,7 +1805,8 @@ Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_drawPath(
 extern "C" JNIEXPORT void JNICALL
 Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_drawImmutablePath(
     JNIEnv* env, jclass, jlong handle, jbyteArray verbs, jfloatArray points, jfloatArray weights,
-    jint fillType, jint color, jboolean stroke, jfloat strokeWidth, jboolean antiAlias) {
+    jint fillType, jint color, jboolean stroke, jfloat strokeWidth, jint strokeCap,
+    jint strokeJoin, jfloat strokeMiter, jboolean antiAlias) {
     if (verbs == nullptr || points == nullptr || weights == nullptr) return;
     std::vector<uint8_t> nativeVerbs(static_cast<size_t>(env->GetArrayLength(verbs)));
     std::vector<float> nativePoints(static_cast<size_t>(env->GetArrayLength(points)));
@@ -1805,7 +1820,8 @@ Java_org_jetbrains_skia_gpu_graphite_AndroidGraphiteNative_drawImmutablePath(
     if (GraphiteEngine* engine = fromHandle(handle)) {
         engine->drawImmutablePath(
                 nativeVerbs, nativePoints, nativeWeights, fillType, static_cast<uint32_t>(color),
-                stroke == JNI_TRUE, strokeWidth, antiAlias == JNI_TRUE);
+                stroke == JNI_TRUE, strokeWidth, strokeCap, strokeJoin, strokeMiter,
+                antiAlias == JNI_TRUE);
     }
 }
 

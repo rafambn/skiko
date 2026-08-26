@@ -141,6 +141,9 @@ public object AndroidGraphiteNative {
         color: Int,
         stroke: Boolean,
         strokeWidth: Float,
+        strokeCap: Int,
+        strokeJoin: Int,
+        strokeMiter: Float,
         antiAlias: Boolean,
     )
 

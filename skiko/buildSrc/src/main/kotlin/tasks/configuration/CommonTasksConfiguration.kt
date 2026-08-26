@@ -335,6 +335,9 @@ fun KotlinTarget.generateVersion(
     val targetName = this.name
     val isUikitSim = isUikitSimulator()
     val generatedDir = project.layout.buildDirectory.dir("generated/$targetName")
+    val skiaTarget = "${targetOs.id}-${targetArch.id}"
+    val skiaVersion = project.skiaVersion(skiaTarget)
+    val skikoVersion = skikoProperties.deployVersion
     val generateVersionTask = project.registerSkikoTask<DefaultTask>(
         "generateVersion${toTitleCase(platformType.name)}".withSuffix(isUikitSim = isUikitSim),
         targetOs,
@@ -348,15 +351,12 @@ fun KotlinTarget.generateVersion(
             outDir.mkdirs()
             val out = "$outDir/Version.kt"
 
-            val target = "${targetOs.id}-${targetArch.id}"
-            val skiaTag = project.skiaVersion(target)
-
             File(out).writeText(
                 """
                 package org.jetbrains.skiko
                 object Version {
-                val skiko = "${skikoProperties.deployVersion}"
-                val skia = "$skiaTag"
+                val skiko = "$skikoVersion"
+                val skia = "$skiaVersion"
                 }
                 """.trimIndent()
             )

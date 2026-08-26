@@ -701,7 +701,9 @@ fun SkikoProjectContext.maybeSignOrSealTask(
     }
     libFile.set(project.layout.file(linkOutputFile))
     val target = targetId(targetOs, targetArch)
-    outDir.set(project.layout.buildDirectory.dir("maybe-signed-$target"))
+    val libNamePrefix = if (targetOs.isWindows) libBaseName else "lib$libBaseName"
+    val outputFileName = "$libNamePrefix-${targetOs.id}-${targetArch.id}${targetOs.dynamicLibExt}"
+    outputFile.set(project.layout.buildDirectory.file("maybe-signed-$target/$outputFileName"))
 
     val toolsDir = project.rootProject.layout.projectDirectory.dir("tools")
     if (targetOs == OS.Linux) {
@@ -760,7 +762,7 @@ fun SkikoProjectContext.createSkikoJvmJarTask(
         createDownloadCodeSignClientDarwinTask(os, hostArch)
     }
     val maybeSign = maybeSignOrSealTask(os, arch, linkBindings)
-    val nativeLib = maybeSign.map { it -> it.outputFiles.get().single { it.name.endsWith(os.dynamicLibExt) } }
+    val nativeLib = maybeSign.flatMap { it.outputFile }.map { it.asFile }
     val createChecksums = createChecksumsTask(os, arch, nativeLib)
     val nativeFiles = mutableListOf(
         nativeLib,
@@ -783,7 +785,7 @@ fun SkikoProjectContext.createSkikoJvmJarTask(
             configureJvmLinkedLibraryElements(os, altArch, linkBindings2)
         }
         val maybeSign2 = maybeSignOrSealTask(os, altArch, linkBindings2)
-        val nativeLib2 = maybeSign2.map { it.outputFiles.get().single { f -> f.name.endsWith(os.dynamicLibExt) } }
+        val nativeLib2 = maybeSign2.flatMap { it.outputFile }.map { it.asFile }
         val createChecksums2 = createChecksumsTask(os, altArch, nativeLib2)
         nativeFiles.add(nativeLib2)
         nativeFiles.add(createChecksums2.map { it.outputs.files.singleFile })

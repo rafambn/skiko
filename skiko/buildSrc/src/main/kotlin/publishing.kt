@@ -294,6 +294,10 @@ private fun SkikoPublishingContext.configureAwtRuntimeAllJarPublication() {
 private fun SkikoPublishingContext.configureAwtRuntimeJarPublication() {
     val allJvmRuntimeVariants = awtRuntimeTargets.map { (os, arch) ->
         project.configurations.create("awtRuntimeElements-${targetId(os, arch)}").apply {
+            // These variants describe the Maven publication. The JVM target's
+            // awtRuntimeElements already exposes the host classes and native JARs
+            // when this project is consumed through a composite build.
+            isCanBeConsumed = false
 
             /* Setup default attributes */
             attributes.attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage.JAVA_RUNTIME))

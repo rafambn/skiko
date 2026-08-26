@@ -3,144 +3,157 @@ package org.jetbrains.skia
 import org.jetbrains.skia.impl.InteropPointer
 import org.jetbrains.skia.impl.InteropScope
 import org.jetbrains.skia.impl.withResult
-import kotlin.jvm.JvmInline
 
-@JvmInline
-value class FontMetrics(internal val metrics: FloatArray) {
-
-    /**
-     * Maintained for binary compatibility and previous construction with its named values
-     *
-     * @param top greatest extent above origin of any glyph bounding box, typically negative; deprecated with variable fonts
-     * @param ascent distance to reserve above baseline, typically negative
-     * @param descent distance to reserve below baseline, typically positive
-     * @param bottom greatest extent below origin of any glyph bounding box, typically positive; deprecated with variable fonts
-     * @param leading distance to add between lines, typically positive or zero
-     * @param avgCharWidth average character width, zero if unknown
-     * @param maxCharWidth maximum character width, zero if unknown
-     * @param xMin greatest extent to left of origin of any glyph bounding box, typically negative; deprecated with variable fonts
-     * @param xMax greatest extent to right of origin of any glyph bounding box, typically positive; deprecated with variable fonts
-     * @param xHeight height of lower-case 'x', zero if unknown, typically negative
-     * @param capHeight height of an upper-case letter, zero if unknown, typically negative
-     * @param underlineThickness underline thickness
-     * @param underlinePosition distance from baseline to top of stroke, typically positive
-     * @param strikeoutThickness strikeout thickness
-     * @param strikeoutPosition distance from baseline to bottom of stroke, typically negative
-     */
-    constructor(
-        top: Float,
-        ascent: Float,
-        descent: Float,
-        bottom: Float,
-        leading: Float,
-        avgCharWidth: Float,
-        maxCharWidth: Float,
-        xMin: Float,
-        xMax: Float,
-        xHeight: Float,
-        capHeight: Float,
-        underlineThickness: Float?,
-        underlinePosition: Float?,
-        strikeoutThickness: Float?,
-        strikeoutPosition: Float?
-    ) : this(
-        floatArrayOf(
-            top,
-            ascent,
-            descent,
-            bottom,
-            leading,
-            avgCharWidth,
-            maxCharWidth,
-            xMin,
-            xMax,
-            xHeight,
-            capHeight,
-            underlineThickness ?: Float.NaN,
-            underlinePosition ?: Float.NaN,
-            strikeoutThickness ?: Float.NaN,
-            strikeoutPosition ?: Float.NaN
-        )
-    )
-
+class FontMetrics(
     /**
      * greatest extent above origin of any glyph bounding box, typically negative; deprecated with variable fonts
      */
-    val top: Float
-        get() = metrics[0]
+    val top: Float,
     /**
      * distance to reserve above baseline, typically negative
      */
-    val ascent: Float
-        get() = metrics[1]
+    val ascent: Float,
     /**
      * distance to reserve below baseline, typically positive
      */
-    val descent: Float
-        get() = metrics[2]
+    val descent: Float,
     /**
      * greatest extent below origin of any glyph bounding box, typically positive; deprecated with variable fonts
      */
-    val bottom: Float
-        get() = metrics[3]
+    val bottom: Float,
     /**
      * distance to add between lines, typically positive or zero
      */
-    val leading: Float
-        get() = metrics[4]
+    val leading: Float,
     /**
      * average character width, zero if unknown
      */
-    val avgCharWidth: Float
-        get() = metrics[5]
+    val avgCharWidth: Float,
     /**
      * maximum character width, zero if unknown
      */
-    val maxCharWidth: Float
-        get() = metrics[6]
+    val maxCharWidth: Float,
     /**
      * greatest extent to left of origin of any glyph bounding box, typically negative; deprecated with variable fonts
      */
-    val xMin: Float
-        get() = metrics[7]
+    val xMin: Float,
     /**
      * greatest extent to right of origin of any glyph bounding box, typically positive; deprecated with variable fonts
      */
-    val xMax: Float
-        get() = metrics[8]
+    val xMax: Float,
     /**
      * height of lower-case 'x', zero if unknown, typically negative
      */
-    val xHeight: Float
-        get() = metrics[9]
+    val xHeight: Float,
     /**
      * height of an upper-case letter, zero if unknown, typically negative
      */
-    val capHeight: Float
-        get() = metrics[10]
+    val capHeight: Float,
     /**
      * underline thickness
      */
-    val underlineThickness: Float?
-        get() = metrics[11].asNumberOrNull()
+    val underlineThickness: Float?,
     /**
      * distance from baseline to top of stroke, typically positive
      */
-    val underlinePosition: Float?
-        get() = metrics[12].asNumberOrNull()
+    val underlinePosition: Float?,
     /**
      * strikeout thickness
      */
-    val strikeoutThickness: Float?
-        get() = metrics[13].asNumberOrNull()
+    val strikeoutThickness: Float?,
     /**
      * distance from baseline to bottom of stroke, typically negative
      */
     val strikeoutPosition: Float?
-        get() = metrics[14].asNumberOrNull()
-
+) {
+    /**
+     * greatest extent above origin of any glyph bounding box, typically negative; deprecated with variable fonts
+     */
+    /**
+     * distance to reserve above baseline, typically negative
+     */
+    /**
+     * distance to reserve below baseline, typically positive
+     */
+    /**
+     * greatest extent below origin of any glyph bounding box, typically positive; deprecated with variable fonts
+     */
+    /**
+     * distance to add between lines, typically positive or zero
+     */
+    /**
+     * average character width, zero if unknown
+     */
+    /**
+     * maximum character width, zero if unknown
+     */
+    /**
+     * greatest extent to left of origin of any glyph bounding box, typically negative; deprecated with variable fonts
+     */
+    /**
+     * greatest extent to right of origin of any glyph bounding box, typically positive; deprecated with variable fonts
+     */
+    /**
+     * height of lower-case 'x', zero if unknown, typically negative
+     */
+    /**
+     * height of an upper-case letter, zero if unknown, typically negative
+     */
+    /**
+     * underline thickness
+     */
+    /**
+     * distance from baseline to top of stroke, typically positive
+     */
+    /**
+     * strikeout thickness
+     */
+    /**
+     * distance from baseline to bottom of stroke, typically negative
+     */
     val height: Float
         get() = descent - ascent
+
+    override fun equals(other: Any?): Boolean {
+        if (other === this) return true
+        if (other !is FontMetrics) return false
+        if (top.compareTo(other.top) != 0) return false
+        if (ascent.compareTo(other.ascent) != 0) return false
+        if (descent.compareTo(other.descent) != 0) return false
+        if (bottom.compareTo(other.bottom) != 0) return false
+        if (leading.compareTo(other.leading) != 0) return false
+        if (avgCharWidth.compareTo(other.avgCharWidth) != 0) return false
+        if (maxCharWidth.compareTo(other.maxCharWidth) != 0) return false
+        if (xMin.compareTo(other.xMin) != 0) return false
+        if (xMax.compareTo(other.xMax) != 0) return false
+        if (xHeight.compareTo(other.xHeight) != 0) return false
+        if (capHeight.compareTo(other.capHeight) != 0) return false
+        if (if (this.underlineThickness == null) other.underlineThickness != null else this.underlineThickness != other.underlineThickness) return false
+        if (if (this.underlinePosition == null) other.underlinePosition != null else this.underlinePosition != other.underlinePosition) return false
+        if (if (this.strikeoutThickness == null) other.strikeoutThickness != null else this.strikeoutThickness != other.strikeoutThickness) return false
+        return !if (this.strikeoutPosition == null) other.strikeoutPosition != null else this.strikeoutPosition != other.strikeoutPosition
+    }
+
+    override fun hashCode(): Int {
+        val PRIME = 59
+        var result = 1
+        result = result * PRIME + top.toBits()
+        result = result * PRIME + ascent.toBits()
+        result = result * PRIME + descent.toBits()
+        result = result * PRIME + bottom.toBits()
+        result = result * PRIME + leading.toBits()
+        result = result * PRIME + avgCharWidth.toBits()
+        result = result * PRIME + maxCharWidth.toBits()
+        result = result * PRIME + xMin.toBits()
+        result = result * PRIME + xMax.toBits()
+        result = result * PRIME + xHeight.toBits()
+        result = result * PRIME + capHeight.toBits()
+        result = result * PRIME + underlineThickness.hashCode()
+        result = result * PRIME + underlinePosition.hashCode()
+        result = result * PRIME + strikeoutThickness.hashCode()
+        result = result * PRIME + strikeoutPosition.hashCode()
+        return result
+    }
 
     override fun toString(): String {
         return "FontMetrics(_top=$top, _ascent=$ascent, _descent=$descent, _bottom=$bottom, _leading=$leading, _avgCharWidth=$avgCharWidth, _maxCharWidth=$maxCharWidth, _xMin=$xMin, _xMax=$xMax, _xHeight=$xHeight, _capHeight=$capHeight, _underlineThickness=$underlineThickness, _underlinePosition=$underlinePosition, _strikeoutThickness=$strikeoutThickness, _strikeoutPosition=$strikeoutPosition)"
@@ -152,4 +165,23 @@ value class FontMetrics(internal val metrics: FloatArray) {
 @Suppress("NOTHING_TO_INLINE")
 private inline fun Float.asNumberOrNull(): Float? = if (isNaN()) null else this
 
-internal fun FontMetrics.Companion.fromInteropPointer(block: InteropScope.(InteropPointer) -> Unit) = FontMetrics(withResult(FloatArray(15), block))
+private fun FontMetrics.Companion.fromRawData(rawData: FloatArray) = FontMetrics(
+        rawData[0],
+        rawData[1],
+        rawData[2],
+        rawData[3],
+        rawData[4],
+        rawData[5],
+        rawData[6],
+        rawData[7],
+        rawData[8],
+        rawData[9],
+        rawData[10],
+        rawData[11].asNumberOrNull(),
+        rawData[12].asNumberOrNull(),
+        rawData[13].asNumberOrNull(),
+        rawData[14].asNumberOrNull()
+    )
+
+
+internal fun FontMetrics.Companion.fromInteropPointer(block: InteropScope.(InteropPointer) -> Unit) = fromRawData(withResult(FloatArray(15), block))

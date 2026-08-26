@@ -1,20 +1,15 @@
 package org.jetbrains.skia
 
-import kotlin.jvm.JvmInline
-
-@JvmInline
-value class FontWidth(val value: Int) {
-
-    operator fun compareTo(other: FontWeight): Int = value.compareTo(other.value)
+interface FontWidth {
     companion object {
-        val ULTRA_CONDENSED = FontWidth(1)
-        val EXTRA_CONDENSED = FontWidth(2)
-        val CONDENSED = FontWidth(3)
-        val SEMI_CONDENSED = FontWidth(4)
-        val NORMAL = FontWidth(5)
-        val SEMI_EXPANDED = FontWidth(6)
-        val EXPANDED = FontWidth(7)
-        val EXTRA_EXPANDED = FontWidth(8)
-        val ULTRA_EXPANDED = FontWidth(9)
+        const val ULTRA_CONDENSED = 1
+        const val EXTRA_CONDENSED = 2
+        const val CONDENSED = 3
+        const val SEMI_CONDENSED = 4
+        const val NORMAL = 5
+        const val SEMI_EXPANDED = 6
+        const val EXPANDED = 7
+        const val EXTRA_EXPANDED = 8
+        const val ULTRA_EXPANDED = 9
     }
 }
